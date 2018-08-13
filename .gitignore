@@ -1,6 +1,6 @@
 # ignore everything under this folder
 Data/Raw/*
-Code/.ipynb_checkpoints
+Code/.ipynb_checkpoints/*
 
 # ignore everything with this pattern
 Code/*.pyc
