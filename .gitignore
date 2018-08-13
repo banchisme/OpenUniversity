@@ -6,4 +6,4 @@ Data/Raw/*
 Code/*.pyc
 
 # exception
-!Data/Raw/.md
+!Data/Raw/*.md
