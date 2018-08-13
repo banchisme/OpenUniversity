@@ -1,0 +1,5 @@
+# ignore everything under this folder
+Data/Raw/*
+
+# ignore everything with this pattern
+Code/*.pyc
