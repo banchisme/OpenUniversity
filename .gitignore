@@ -1,9 +1,9 @@
 # ignore everything under this folder
 Data/Raw/*
+Code/.ipynb_checkpoints
 
 # ignore everything with this pattern
 Code/*.pyc
-Code/.ipynb_checkpoints/*
 
 # exception
 !Data/Raw/.gitkeep
