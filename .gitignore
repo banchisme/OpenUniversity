@@ -3,3 +3,6 @@ Data/Raw/*
 
 # ignore everything with this pattern
 Code/*.pyc
+
+# exception
+!Data/Raw/.gitkeep
