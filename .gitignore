@@ -3,7 +3,7 @@ Data/Raw/*
 
 # ignore everything with this pattern
 Code/*.pyc
-Code/*.ipynb_checkpoints
+Code/.ipynb_checkpoints/*
 
 # exception
 !Data/Raw/.gitkeep
