@@ -6,9 +6,260 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import Imputer, OneHotEncoder, LabelEncoder, StandardScaler
 from sklearn.pipeline import Pipeline, FeatureUnion
+from scipy import stats
+from clickfeatures import regularity, procrastination
 import math
 import scipy
 import re
+
+
+def build_timebased_regularity(studentVle, assessments, using_testing_dates=0, user_defined_range=[]):
+    # define helper functions
+    def extract_timestamps_and_weights(df):
+        return pd.Series({
+            'timestamps': df['date'].tolist(),
+            'weights': df['sum_click'].tolist()})
+
+    def extract_test_dates(df, num_dates=3):
+        return pd.Series({'dates': sorted(df['date'].tolist())[:num_dates]})
+
+    def get_time_regularity(df, using_testing_dates=using_testing_dates, 
+        user_defined_range=user_defined_range):
+        if user_defined_range:
+            start, end = user_defined_range
+        elif 0 <= using_testing_dates <= 2:
+            start = 0
+            end = df['dates'][using_testing_dates]
+
+        ts = df['timestamps']
+        ws = df['weights']
+        # cut off dates after the end date
+        ts = filter(lambda x: x <= end, ts)
+        ws = ws[:len(ts)]
+        r = regularity.TimeRegularity(ts, ws, end=end, unit='day')
+        return r.get_regularity()
+
+    def unwrap_time_regularity(df, metrics=['pwd', 'ws1', 'ws2', 'ws3', 'fwd']):
+        assert 'regularity' in df.columns
+        for metric in metrics:
+            df[metric] = df['regularity'].apply(
+                lambda x: x[metric] if metric in x else np.nan)
+        return df
+
+    # make a copy
+    studentVle = studentVle.copy()
+    assessments = assessments.copy()
+
+    #######################
+    # preprocess studentVle
+    #######################
+    studentVle = studentVle.query('date >= 0')
+
+    # aggregate daily clicks
+    identifiers = ['code_module', 'code_presentation', 'id_student', 'date']
+    studentVle = studentVle.groupby(
+        identifiers)['sum_click'].agg('sum').reset_index()
+    studentVle.sort_values(identifiers, inplace=True)
+
+    # apply function
+    identifiers = ['code_module', 'code_presentation', 'id_student']
+    studentVle = studentVle.groupby(
+        identifiers).apply(extract_timestamps_and_weights)
+    studentVle.reset_index(inplace=True)
+
+    #######################
+    # preprocess assessments
+    #######################
+    identifiers = ['code_module', 'code_presentation']
+    assessments = assessments.groupby(identifiers).apply(extract_test_dates)
+    assessments.reset_index(inplace=True)
+
+    # merge
+    identifiers = ['code_module', 'code_presentation']
+    studentVle = studentVle.merge(assessments, on=identifiers, how='left')
+
+    # build features
+    studentVle['regularity'] = studentVle.apply(get_time_regularity, axis=1)
+    studentVle = unwrap_time_regularity(studentVle)
+
+    # drop unuseful columns
+    studentVle.drop([
+        'regularity', 'timestamps', 'weights', 'dates'], axis=1, inplace=True)
+
+    return studentVle
+
+
+def build_activitybased_regularity(studentVle, vle, assessments, drop_columns=True,
+    using_testing_dates=0, user_defined_range=[]):
+
+    valid_activies = [
+        'forumng', 'subpage', 'oucontent', 'homepage', 'quiz',
+        'resource', 'url', 'ouwiki', 'externalquiz', 'page',
+        'oucollaborate', 'questionnaire', 'ouelluminate',
+        'glossary', 'dualpane', 'dataplus', 'folder',
+        'sharedsubpage', 'repeatactivity']
+
+    def extract_activities(df):
+        return dict(zip(df['activity_type'], df['sum_click']))
+
+    def extract_test_dates(df, num_dates=3):
+        return pd.Series({'dates': sorted(df['date'].tolist())[:num_dates]})
+
+    def filter_according_to_range(df, using_testing_dates=using_testing_dates,
+                                  user_defined_range=user_defined_range):
+        if user_defined_range:
+            start, end = user_defined_range
+        else:
+            start = 0
+            end = df['dates'][using_testing_dates]
+
+        return df['date'] <= end
+
+    def agg_activities(df, valid_activies=valid_activies):
+        df = df.copy()
+        df.sort_values('date', inplace=True)
+        res = []
+        for index in df.index:
+            row = []
+            for activity in valid_activies:
+                try:
+                    row.append(df.at[index, 'activities'][activity])
+                except KeyError:
+                    row.append(0)
+            res.append(row)
+        return pd.Series({'activities': res})
+
+    def get_activity_regularity(activities, activity_names=valid_activies):
+        r = regularity.ActivityRegularity(activity_names, activities)
+        return r.get_regularity()
+
+    def unwrap_activity_regularity(df, metrics=['concentration', 'consistency']):
+        assert 'regularity' in df.columns
+        for metric in metrics:
+            df[metric] = df['regularity'].apply(
+                lambda x: x[metric] if metric in x else np.nan)
+        return df
+
+    # make a copy
+    vle = vle.copy()
+    studentVle = studentVle.copy()
+    assessments = assessments.copy()
+
+    #######################
+    # preprocess
+    #######################
+    identifiers = ['code_module', 'code_presentation', 'id_site']
+    studentVle = studentVle.query('date >= 0')
+    studentVle = studentVle.merge(vle, on=identifiers, how='inner')
+
+    # aggregate clicks
+    identifiers = [
+        'code_module', 'code_presentation',
+        'id_student', 'date', 'activity_type']
+    studentVle = studentVle.groupby(
+        identifiers)['sum_click'].agg('sum').reset_index()
+
+    # build features
+    identifiers = ['code_module', 'code_presentation', 'id_student', 'date']
+    studentVle = studentVle.groupby(
+        identifiers).apply(extract_activities).reset_index()
+    studentVle.columns = identifiers + ['activities']
+
+    # merge wiht assessments dates
+    identifiers = ['code_module', 'code_presentation']
+    assessments = assessments.groupby(identifiers).apply(extract_test_dates)
+    assessments.reset_index(inplace=True)
+    studentVle = studentVle.merge(assessments, on=identifiers, how='left')
+
+    # filter dates
+    mask = studentVle.apply(filter_according_to_range, axis=1)
+    studentVle = studentVle[mask].copy()
+
+    identifiers = ['code_module', 'code_presentation', 'id_student']
+    studentVle = studentVle.groupby(
+        identifiers).apply(agg_activities).reset_index()
+
+    studentVle['regularity'] = studentVle['activities'].apply(get_activity_regularity)
+    studentVle = unwrap_activity_regularity(studentVle)
+
+    # drop useless columns
+    if drop_columns:
+        studentVle.drop(['regularity', 'activities'], axis=1, inplace=True)
+
+    return studentVle
+
+
+def build_procrastination(studentVle, assessments, using_testing_dates=0, user_defined_range=[]):
+    # define helper functions
+    def extract_timestamps_and_weights(df):
+        return pd.Series({
+            'timestamps': df['date'].tolist(),
+            'weights': df['sum_click'].tolist()})
+
+    def extract_test_dates(df, num_dates=3):
+        return pd.Series({'dates': sorted(df['date'].tolist())[:num_dates]})
+
+    def get_procastination(df, fun, 
+        using_testing_dates=using_testing_dates, 
+        user_defined_range=user_defined_range):
+        if user_defined_range:
+            start, end = user_defined_range
+        elif 0 <= using_testing_dates <= 2:
+            start = 0
+            end = df['dates'][using_testing_dates]
+
+        ts = df['timestamps']
+        ws = df['weights']
+        # cut off dates after the end date
+        ts = filter(lambda x: x <= end, ts)
+        ws = ws[:len(ts)]
+        p = procrastination.WeightedMean(fun, ts, ws, end=end, unit='day')
+        return p.get_procrastination()
+
+    # make a copy
+    studentVle = studentVle.copy()
+    assessments = assessments.copy()
+
+    #######################
+    # preprocess studentVle
+    #######################
+    studentVle = studentVle.query('date >= 0')
+
+    # aggregate daily clicks
+    identifiers = ['code_module', 'code_presentation', 'id_student', 'date']
+    studentVle = studentVle.groupby(
+        identifiers)['sum_click'].agg('sum').reset_index()
+    studentVle.sort_values(identifiers, inplace=True)
+
+    # apply function
+    identifiers = ['code_module', 'code_presentation', 'id_student']
+    studentVle = studentVle.groupby(
+        identifiers).apply(extract_timestamps_and_weights)
+    studentVle.reset_index(inplace=True)
+
+    #######################
+    # preprocess assessments
+    #######################
+    identifiers = ['code_module', 'code_presentation']
+    assessments = assessments.groupby(identifiers).apply(extract_test_dates)
+    assessments.reset_index(inplace=True)
+
+    # merge
+    identifiers = ['code_module', 'code_presentation']
+    studentVle = studentVle.merge(assessments, on=identifiers, how='left')
+
+    # build features
+    feature_names = ['proc1', 'proc2', 'proc3']
+    functions = [lambda x: x,
+                 lambda x: 1. / (1 - x),
+                 lambda x: math.log(1 + x, 2)]
+    for feature_name, f in zip(feature_names, functions):
+        studentVle[feature_name] = studentVle.apply(get_procastination, axis=1, fun=f)
+
+    # drop unuseful columns
+    studentVle.drop(['timestamps', 'weights', 'dates'], axis=1, inplace=True)
+
+    return studentVle
 
 
 class preprocessing(object):
@@ -158,6 +409,14 @@ class preprocessing(object):
 
         # ignore temperal_seg larger than 8
         return engagement[(engagement['temperal_seg'] < 9)]
+
+    @staticmethod
+    def preprocessing_selfregularity_based_features(vle, studentVle, assessments, range):
+        proc = build_procrastination(studentVle, assessments)
+        time_df = build_timebased_regularity(studentVle, assessments)
+        act_df = build_activitybased_regularity(studentVle, vle)
+
+
 
     @staticmethod
     def merge_and_process(studentInfo, engagement):
