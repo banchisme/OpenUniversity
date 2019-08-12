@@ -7,10 +7,12 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import Imputer, OneHotEncoder, LabelEncoder, StandardScaler
 from sklearn.pipeline import Pipeline, FeatureUnion
 from scipy import stats
-from clickfeatures import regularity, procrastination
+from clickfeatures import regularity, procrastination, timeseries
 import math
 import scipy
 import re
+
+
 
 
 def build_timebased_regularity(studentVle, assessments, using_testing_dates=0, user_defined_range=[]):
@@ -348,7 +350,7 @@ class preprocessing(object):
         return max(longest_run_so_far, current_run)
 
     @staticmethod
-    def preprocessing_studentVle(vle, studentVle):
+    def preprocessing_studentVle(vle, studentVle, using_testing_dates=0, user_defined_range=[]):
         vle = vle.copy()
         studentVle = studentVle.copy()
 

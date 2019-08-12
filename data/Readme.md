@@ -1,5 +1,5 @@
 ## List of Raw Datasets
-The Raw data for this projoect can be downloaded at [Open University Learning Analytics dataset](https://analyse.kmi.open.ac.uk/open_dataset)
+The raw data for this projoect can be downloaded at [Open University Learning Analytics dataset](https://analyse.kmi.open.ac.uk/open_dataset)
 
 [Database Schema]: https://analyse.kmi.open.ac.uk/resources/images/model.png
 
