@@ -93,11 +93,6 @@ def train_test_split(df, train_ratio=None, train_size=None, train_years=['2013B'
     return train_df, test_df
 
 
-
-
-
-
-
 class NameSpace(object):
     pass
 

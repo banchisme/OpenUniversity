@@ -1,9 +1,30 @@
-# ignore everything under this folder
-Data/Raw/*
-.ipynb_checkpoints
+# credentials, just in case
+*.pem
+*_rsa
 
-# ignore everything with this pattern
-Code/*.pyc
+# folders
+data/*
+model/*
+log/*
+build/
+venv/*
+.idea
+__pycache__/
+.ipynb_checkpoints/
+.pytest_cache
+*.egg-info/
 
-# exception
-!Data/Raw/*.md
+# database
+*.db
+
+# useless files
+*.pyc
+*.log
+*.bin
+.cache
+.DS_Store
+~*.docx
+
+#exceptions
+# both !**/*.md and !*.md works
+!*.md
