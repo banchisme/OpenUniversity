@@ -12,3 +12,10 @@ class FeatureAlreadyDefinedException(Exception):
 
 	def __str__(self):
 		return self.message
+
+class DuplicateIndex(Exception):
+	def __init__(self, message):
+		self.message = 'index must be unique, while {} have duplicates'.format(message)
+
+	def __str__(self):
+		return self.message

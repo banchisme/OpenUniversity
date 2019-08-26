@@ -2,47 +2,27 @@ r"""tools to build features"""
 from utils import exceptions
 
 
-class FeatureContainer:
-	"""container class that hold all the individual features"""
-	def __init__(self):
-		self.features = {}
+class FeatureDict(dict):
+	"""a container class that hold all the individual features"""
 
-	def add(self, feature_name, feature):
-		if feature_name in self.features:
-			raise exceptions.FeatureAlreadyDefinedException(feature_name)
+	def update(self, feature_dict, name_conflict='raise_error'):
+		r"""
+		union with another feature container
+		:param container (feature container):
+		:return:
+		None, union inplace
+		"""
+
+		if name_conflict == 'raise_error':
+			for feature_name, feature in feature_dict.itmes():
+				if feature_name not in self:
+					self[feature_name] = feature
+				else:
+					raise exceptions.FeatureAlreadyDefinedException(feature_name)
 		else:
-			self._sanity_check(feature)
-			self.features[feature_name] = feature
+			raise NotImplementedError
 
-	def get(self, feature_name):
-		if feature_name in self.features:
-			return self.features[feature_name].copy()
-		else:
-			raise exceptions.FeatureNotDefinedException(feature_name)
-
-	def update(self, feature_name, feature):
-		if feature_name in self.features:
-			self.features[feature_name] = feature
-		else:
-			raise exceptions.FeatureNotDefinedException(feature_name)
-
-	def pop(self, feature_name):
-		if feature_name in self.features:
-			return self.features.pop(feature_name)
-		else:
-			raise exceptions.FeatureNotDefinedException(feature_name)
-
-	def delete(self, feature_name):
-		self.pop(feature_name)
-
-	def _sanitiy_check(self, feature):
-		r"""minimum sanity check"""
-		pass
-
-	def get_feature_names(self):
-		return list(self.features.keys())
-
-	def merge(self, feature_names):
+	def merge(self, feature_names=[]):
 		r"""merge features
 			Argument:
 				feature_names (list): a list of feature names to be merged, when it is [],
@@ -51,13 +31,13 @@ class FeatureContainer:
 				merged feature (Feature)
 		"""
 		if len(feature_names) == 0:
-			feature_names = self.get_feature_names()
+			feature_names = list(self.keys())
 		elif len(feature_names) == 1:
-			return self.get(feature_names[0])
+			return self[feature_names[0]]
 
-		feature = self.get(feature_names[0])
+		feature = self[feature_names[0]].copy()
 		for feature_name in feature_names[1:]:
-			feature = feature.merge(self.get(feature_name))
+			feature = feature.merge(self[feature_name])
 
 		return feature
 
@@ -69,6 +49,7 @@ class Feature:
 			Argument:
 				key (str): feature_name
 				val (pd.DataFrame): feature value, pandas dataframe, indexed
+				mutable (bool): if mutable, feature could resign values
 		"""
 		self.name = key
 		self._sanity_check(val)
@@ -96,19 +77,35 @@ class Feature:
 
 	@property
 	def name(self):
-		return self.__name
+		return self._name
 
 	@name.setter
 	def name(self, new_name):
-		self.__name = new_name
+		self._name = new_name
 
 	@property
 	def data(self):
-		return self.__data.copy()
+		return self._data.copy()
 
 	@data.setter
 	def data(self, new_data):
-		"""you should be able to change the data through the setter"""
-		if self.data is None:
-			self.__data = new_data
+		"""you should not be able to change the data through the setter"""
+		if hasattr(self, '_data') is False:
+			self._data = new_data
 
+
+def get_features_from_dataframe(df):
+	r"""return a container of features based on the a dataframe
+	Argument:
+		df (pd.DataFrame)
+	Return:
+		an instance of FeatureDict
+	"""
+
+	fdict = FeatureDict()
+
+	for col in df.columns:
+		feature = Feature(col, df[[col]])
+		fdict[feature.name] = feature
+
+	return fdict

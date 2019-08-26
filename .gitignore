@@ -24,6 +24,7 @@ __pycache__/
 .cache
 .DS_Store
 ~*.docx
+notebooks/experiment.ipynb # this is a notebook used to expriment code
 
 #exceptions
 # both !**/*.md and !*.md works
