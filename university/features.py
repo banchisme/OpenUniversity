@@ -1,5 +1,5 @@
 r"""tools to build features"""
-from utils import exceptions
+from university import exceptions
 
 
 class FeatureDict(dict):
@@ -94,18 +94,3 @@ class Feature:
 			self._data = new_data
 
 
-def get_features_from_dataframe(df):
-	r"""return a container of features based on the a dataframe
-	Argument:
-		df (pd.DataFrame)
-	Return:
-		an instance of FeatureDict
-	"""
-
-	fdict = FeatureDict()
-
-	for col in df.columns:
-		feature = Feature(col, df[[col]])
-		fdict[feature.name] = feature
-
-	return fdict

@@ -1,131 +1,4 @@
-import pandas as pd
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import Imputer, OneHotEncoder, LabelEncoder, StandardScaler
-from sklearn.pipeline import Pipeline, FeatureUnion
-from scipy import stats
-#from clickfeatures import regularity, procrastination, timeseries
-import math
-import scipy
-import re
-from sklearn.base import TransformerMixin
-from collections import Counter
-from utils import exceptions
-
-
-class NumericData(TransformerMixin):
-    r"""fit and transform all numeric features
-
-        example:
-            num = NumericFeature
-            num.fit_transform(X) # X is a pandas dataframe
-    """
-    def __init__(self, fillna='mean', normalize=True):
-        r"""set parameters to deal with nemeric data
-
-        """
-        self.settings = {'fillna': fillna, 'normalize': normalize}
-        self.parameters = {}
-
-    def fit(self, X):
-        r"""
-        :param X: pd.Seriese or a pd.DataFrame with one column
-        :return: None
-        """
-        if self.settings['fillna'] == 'mean':
-            self.parameters['fillna'] = X.mean()
-        else:
-            raise NotImplementedError
-
-        if self.settings['normalize'] is True:
-            self.parameters['normalize'] = {'mu': X.mean(), 'std': X.std()}
-
-    def transform(self, X):
-        X = X.copy()
-        X = X.fillna(self.parameters['fillna'])
-
-        if self.settings['normalize']:
-            X = (X - self.parameters['normalize']['mu']) / self.parameters['normalize']['std']
-
-        return X
-
-    def fit_transform(self, X, y=None, **fit_params):
-        self.fit(X)
-        return self.transform(X)
-
-
-class CategoricalData(TransformerMixin):
-    r"""use one hot encoding to fit transform categorical feature
-
-        example:
-            cat = CategoricalFeature()
-            y = cat.fit_transform(X) # X is a pandas dataframe
-    """
-    def __init__(self, encode='one-hot', most_common=10, handle_unknown='ignore', sparse=False, **kwargs):
-        r"""encode categorical values
-            Argument:
-                encode (str): identifier for encoder, only one-host is supported now
-                most_common (int): only most common n categories are kept
-                handle_unknown (str): 'ignore' or 'error', parameter for the encoder
-                sparse (bool): if True, return a sparse matrix
-                kwargs (dict): kwargs for the encoder
-            Return:
-                a preprocessor that handle categorical values
-        """
-        if encode == 'one-hot':
-            self.encoder = OneHotEncoder(handle_unknown=handle_unknown, sparse=sparse, **kwargs)
-            self.settings = {'most_common': most_common}
-            self.parameters = {}
-        else:
-            raise NotImplementedError
-
-    def fit(self, X):
-        r"""
-        :param X (pd.DataFrame): data to be fitted, expected to be a pandas dataframe
-        :return:
-        """
-        categories = self._get_most_common_categories(X)
-        self.encoder.categories = categories
-        self.encoder.fit(X)
-
-    def transform(self, X):
-        r"""encode X"""
-        data = self.encoder.transform(X)
-        columns = [X.columns[0] + '_' + category for category in self.encoder.categories[0]]
-        return pd.DataFrame(data, index=X.index, columns=columns)
-
-    def fit_transform(self, X, y=None, **fit_params):
-        self.fit(X)
-        return self.transform(X)
-
-    def _get_most_common_categories(self, X):
-        r""" return the most common type in X"""
-        counter = Counter(X.copy().values.reshape(-1))
-        return [[i for i, j in counter.most_common(self.settings['most_common'])]]
-
-
-class ColumnExtractor:
-    r"""extract column as a pandas DataFrame"""
-    def __init__(self, X, index_col):
-        self.index_col = index_col
-        self.X = X.copy()
-        self._sanity_check()
-
-    def extract(self, col):
-        if type(self.index_col) is list:
-            columns = self.index_col + [col]
-        else:
-            columns = [self.index_col, col]
-        data = self.X[columns].set_index(self.index_col)
-        return data
-
-    def _sanity_check(self):
-        if self.X[self.index_col].duplicated().sum() > 0:
-            raise exceptions.DuplicateIndex(self.index_col)
-
+from university.features import FeatureDict, Feature
 
 def build_timebased_regularity(studentVle, assessments, using_testing_dates=0, user_defined_range=[]):
     # define helper functions
@@ -137,7 +10,7 @@ def build_timebased_regularity(studentVle, assessments, using_testing_dates=0, u
     def extract_test_dates(df, num_dates=3):
         return pd.Series({'dates': sorted(df['date'].tolist())[:num_dates]})
 
-    def get_time_regularity(df, using_testing_dates=using_testing_dates, 
+    def get_time_regularity(df, using_testing_dates=using_testing_dates,
         user_defined_range=user_defined_range):
         if user_defined_range:
             start, end = user_defined_range
@@ -313,8 +186,8 @@ def build_procrastination(studentVle, assessments, using_testing_dates=0, user_d
     def extract_test_dates(df, num_dates=3):
         return pd.Series({'dates': sorted(df['date'].tolist())[:num_dates]})
 
-    def get_procastination(df, fun, 
-        using_testing_dates=using_testing_dates, 
+    def get_procastination(df, fun,
+        using_testing_dates=using_testing_dates,
         user_defined_range=user_defined_range):
         if user_defined_range:
             start, end = user_defined_range

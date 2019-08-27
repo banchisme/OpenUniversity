@@ -1,5 +1,5 @@
 import pandas as pd
-from . import settings
+from university import settings
 import os
 
 
@@ -91,11 +91,6 @@ def train_test_split(df, train_ratio=None, train_size=None, train_years=['2013B'
     test_df = df[~ train_mask].copy()
 
     return train_df, test_df
-
-
-
-
-
 
 
 class NameSpace(object):
