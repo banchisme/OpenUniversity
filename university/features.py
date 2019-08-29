@@ -14,7 +14,7 @@ class FeatureDict(dict):
 		"""
 
 		if name_conflict == 'raise_error':
-			for feature_name, feature in feature_dict.itmes():
+			for feature_name, feature in feature_dict.items():
 				if feature_name not in self:
 					self[feature_name] = feature
 				else:

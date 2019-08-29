@@ -106,25 +106,32 @@ class OrdinalData(TransformerMixin):
     r"""encode ordinal data into integers"""
     def __init__(self, order, handle_unknown='ignore', fillna='most_common'):
         self.settings = {'handle_unknown': handle_unknown, 'fillna': fillna, 'order': order}
-        self.parameters = {}
+        order_dict = defaultdict(int)
+        order_dict.update(dict(zip(order, range(len(order)))))
+        self.parameters = {'order_dict': order_dict, 'order_category': order}
 
     def fit(self, X):
         if self.settings['fillna'] == 'most_common':
-            self.parameters['fillna'] = Counter(X).most_common(1)[0]
+            self.parameters['fillna'] = self._get_most_common(X)
+            self.parameters['order_dict'].default_factory = lambda: self.parameters['fillna']
         else:
             raise NotImplementedError
 
     def transform(self, X):
-        pass
+        X = X.fillna(self.parameters['fillna'])
+        colname = X.columns[0]
+        X[colname] = X[colname].map(self.parameters['order_dict'])
+        return X
 
     def fit_transform(self, X, y=None, **fit_params):
-        pass
+        self.fit(X)
+        return self.transform(X)
 
     def _get_most_common(self, X):
         r""" return the most common type in X"""
         counter = Counter(X.copy().values.reshape(-1))
-        most_common_category = counter.most_common(1)[0]
-        return self.order.index(most_common_category)
+        most_common_category = counter.most_common(1)[0][0]
+        return self.parameters['order_category'].index(most_common_category)
 
 
 class ColumnExtractor:
