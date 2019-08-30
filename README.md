@@ -17,7 +17,7 @@
  #### 2. Quick Start
  
  1. to learn more about this project, go to: 
- [project description](https://github.com/banchisme/open-university/blob/master/Docs/IEEE%20Special%20Issue%20Abstract.pdf)
+ [project description](https://github.com/banchisme/open-university/blob/master/docs/IEEE%20Special%20Issue%20Abstract.pdf)
  
  2. to see how to use `university` to build a customized data pipline;
     see `notebooks/example_of_building_data_pipeline.ipynb`.
