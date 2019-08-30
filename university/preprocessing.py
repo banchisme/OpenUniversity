@@ -1,11 +1,5 @@
 import pandas as pd
-import numpy as np
-from sklearn.preprocessing import OneHotEncoder, LabelEncoder
-from scipy import stats
-from clickfeatures import regularity, procrastination
-import math
-import scipy
-import re
+from sklearn.preprocessing import OneHotEncoder
 from sklearn.base import TransformerMixin
 from collections import Counter, defaultdict
 from university import exceptions

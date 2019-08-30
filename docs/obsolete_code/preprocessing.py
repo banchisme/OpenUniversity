@@ -1,80 +1,5 @@
 from university.features import FeatureDict, Feature
 
-def build_timebased_regularity(studentVle, assessments, using_testing_dates=0, user_defined_range=[]):
-    # define helper functions
-    def extract_timestamps_and_weights(df):
-        return pd.Series({
-            'timestamps': df['date'].tolist(),
-            'weights': df['sum_click'].tolist()})
-
-    def extract_test_dates(df, num_dates=3):
-        return pd.Series({'dates': sorted(df['date'].tolist())[:num_dates]})
-
-    def get_time_regularity(df, using_testing_dates=using_testing_dates,
-        user_defined_range=user_defined_range):
-        if user_defined_range:
-            start, end = user_defined_range
-        elif 0 <= using_testing_dates <= 2:
-            start = 0
-            end = df['dates'][using_testing_dates]
-
-        ts = df['timestamps']
-        ws = df['weights']
-        # cut off dates after the end date
-        ts = filter(lambda x: x <= end, ts)
-        ws = ws[:len(ts)]
-        r = regularity.TimeRegularity(ts, ws, end=end, unit='day')
-        return r.get_regularity()
-
-    def unwrap_time_regularity(df, metrics=['pwd', 'ws1', 'ws2', 'ws3', 'fwd']):
-        assert 'regularity' in df.columns
-        for metric in metrics:
-            df[metric] = df['regularity'].apply(
-                lambda x: x[metric] if metric in x else np.nan)
-        return df
-
-    # make a copy
-    studentVle = studentVle.copy()
-    assessments = assessments.copy()
-
-    #######################
-    # preprocess studentVle
-    #######################
-    studentVle = studentVle.query('date >= 0')
-
-    # aggregate daily clicks
-    identifiers = ['code_module', 'code_presentation', 'id_student', 'date']
-    studentVle = studentVle.groupby(
-        identifiers)['sum_click'].agg('sum').reset_index()
-    studentVle.sort_values(identifiers, inplace=True)
-
-    # apply function
-    identifiers = ['code_module', 'code_presentation', 'id_student']
-    studentVle = studentVle.groupby(
-        identifiers).apply(extract_timestamps_and_weights)
-    studentVle.reset_index(inplace=True)
-
-    #######################
-    # preprocess assessments
-    #######################
-    identifiers = ['code_module', 'code_presentation']
-    assessments = assessments.groupby(identifiers).apply(extract_test_dates)
-    assessments.reset_index(inplace=True)
-
-    # merge
-    identifiers = ['code_module', 'code_presentation']
-    studentVle = studentVle.merge(assessments, on=identifiers, how='left')
-
-    # build features
-    studentVle['regularity'] = studentVle.apply(get_time_regularity, axis=1)
-    studentVle = unwrap_time_regularity(studentVle)
-
-    # drop unuseful columns
-    studentVle.drop([
-        'regularity', 'timestamps', 'weights', 'dates'], axis=1, inplace=True)
-
-    return studentVle
-
 
 def build_activitybased_regularity(studentVle, vle, assessments, drop_columns=True,
     using_testing_dates=0, user_defined_range=[]):
@@ -402,7 +327,6 @@ class preprocessing(object):
         proc = build_procrastination(studentVle, assessments)
         time_df = build_timebased_regularity(studentVle, assessments)
         act_df = build_activitybased_regularity(studentVle, vle)
-
 
 
     @staticmethod
