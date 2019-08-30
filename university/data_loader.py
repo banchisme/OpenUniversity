@@ -59,7 +59,7 @@ def get_raw_data(file_names=[]):
 
 
 # high level functions that user will directly call
-def train_test_split(df, train_ratio=None, train_size=None, train_years=['2013B', '2013J', '2014B']):
+def train_test_split_df(df, train_ratio=None, train_size=None, train_years=['2013B', '2013J', '2014B']):
     r"""
         train test split, one of the train_ratio/train_size/train_years must be not None.
 
@@ -93,26 +93,18 @@ def train_test_split(df, train_ratio=None, train_size=None, train_years=['2013B'
     return train_df, test_df
 
 
-class NameSpace(object):
-    pass
+def train_test_split(raw, **kwargs):
+    r""" split data into training and testing data
+    :param raw (dict): dictionary that contains the raw data
+    :param kwargs: kwargs passed to train_test_split_df
+    :return:
+        train (dictionary), test(dictionary)
+    """
+    train = {}
+    test = {}
+    for data_frame_name, data_frame in raw.items():
+        train_df, test_df = train_test_split_df(data_frame.copy(), **kwargs)
+        train[data_frame_name] = train_df
+        test[data_frame_name] = test_df
 
-
-train = NameSpace()
-test = NameSpace()
-total = NameSpace()
-# datasets = [
-#     assessments, courses, studentAssessment,
-#     studentInfo, studentRegistration, vle, studentVle]
-#
-# data_names = [
-#     'assessments', 'courses', 'studentAssessment', 'studentInfo',
-#     'studentRegistration', 'vle', 'studentVle']
-# for pt in range(len(datasets)):
-#     name = data_names[pt]
-#     df = datasets[pt]
-#     df_train, df_test = train_test_split(df)
-#     setattr(train, name, df_train)
-#     setattr(test, name, df_test)
-#     setattr(total, name, df)
-
-
+    return train, test

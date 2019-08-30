@@ -6,6 +6,7 @@ import pandas as pd
 from university.features import Feature, FeatureDict
 from university import preprocessing
 from clickfeatures import regularity
+from collections import defaultdict
 
 
 # low level helper functions
@@ -265,3 +266,46 @@ def get_ordinal_features_batch(raw):
     orders = [get_ordinal_data_orders(*args) for args in predefined_features]
     preprocessors = [preprocessing.OrdinalData(order) for order in orders]
     return get_feature_batch(raw, predefined_features, preprocessors)
+
+
+# response
+def get_response(raw, targets=[], response_name='responce', drop_other=True):
+    r"""get the responce from the raw data
+        Argument:
+            raw (dict): dictionary that contains the raw data files (each as a pd.DataFrame)
+            targets (list of list):
+                sub lists  are target labels, must be a subset of ['Pass', 'Withdrawn', 'Fail', 'Distinction']
+                when need to group a subset labels together, e.g., 'Pass' and 'Distinction' together,
+                use targets = [['Pass'], ['Distinction']] if only interested to classify between 'Pass' and 'Distinction'
+            responce_name (str): the name you want to give to the responce, optional.
+            drop_other (bool): if True, drop rows whose response value not in targets
+        Return:
+            a feature container that contains only the response feature
+    """
+
+    # create target encoder
+    encoder = defaultdict(lambda: None)
+    for i, t in enumerate(targets):
+        encoder.update(dict(zip(t, [i] * len(t))))
+
+    # extract target data
+    data_frame_name = 'student_info'
+    extractor = preprocessing.ColumnExtractor(
+            raw[data_frame_name],
+            index_col=get_dataframe_index(data_frame_name))
+    target_data = extractor.extract('final_result')
+
+    # encode target data
+    target_data.columns = [response_name]
+    target_data[response_name] = target_data[response_name].map(encoder)
+
+    # drop rows if neccessary
+    if drop_other is True:
+        target_data.dropna(inplace=True)
+
+    # wrap target_data into a feature_container, this makes merging with other features easier
+    target_feature = Feature(response_name, target_data)
+    feature_container = FeatureDict()
+    feature_container[target_feature.name] = target_feature
+
+    return feature_container
