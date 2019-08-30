@@ -2,7 +2,7 @@ This folder contains jupyter notebooks code
 
 |file name|description|
 |---|---|
-|old/*| legacy code that explore the data set and build early prediciton models; Should still work but not updated any more|
+|`old/*`| legacy code that explore the data set and build early prediciton models; Should still work but not updated any more|
 |`example_of_building_data_pipeline.ipynb`|example code to build a data pipeline using the `university` package|
 |`example_of_building_a_simple_classification_model.ipynb`|example code to build a data pipeline + classification model to identfiy failing students at early stage|
 
